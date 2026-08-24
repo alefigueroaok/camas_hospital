@@ -1,7 +1,2 @@
 name = "pwa-camas-app"
 pages_build_output_dir = "dist"
-
-# En Cloudflare Pages > Settings > Environment variables, definir:
-#   VITE_SUPABASE_URL
-#   VITE_SUPABASE_ANON_KEY
-# tanto para Production como para Preview.

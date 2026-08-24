@@ -1,0 +1,15 @@
+node_modules/
+dist/
+dist-ssr/
+
+# Nunca subir las claves de Supabase
+.env.local
+.env.*.local
+
+# Cachés locales
+*.tsbuildinfo
+.DS_Store
+
+# Editor
+.vscode/*
+!.vscode/extensions.json

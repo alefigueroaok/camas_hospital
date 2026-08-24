@@ -1,9 +1,14 @@
+import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Desplegado en Cloudflare Pages: build estático (dist/), sin SSR.
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -23,16 +28,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Realtime/API van siempre a red; sólo cacheamos el shell estático.
         navigateFallbackDenylist: [/^\/rest\//, /^\/realtime\//, /^\/auth\//],
       },
     }),
   ],
-  server: {
-    port: 5173,
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: true,
-  },
+  server: { port: 5173 },
+  build: { outDir: 'dist', sourcemap: true },
 });
