@@ -212,6 +212,15 @@ export type Database = {
         };
         Returns: undefined;
       };
+      crear_hospital: {
+        Args: {
+          p_nombre: string;
+          p_domicilio: string;
+          p_director_nombre: string;
+          p_telefono: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       rol_sistema: RolSistema;
