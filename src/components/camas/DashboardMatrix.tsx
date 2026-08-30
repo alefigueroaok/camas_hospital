@@ -9,9 +9,10 @@ interface Props {
   sectores: Sector[];
   camas: Cama[];
   ocupacionesPorCama: Map<string, OcupacionConPaciente>;
+  onSeleccionarCama: (cama: Cama) => void;
 }
 
-export function DashboardMatrix({ sectores, camas, ocupacionesPorCama }: Props) {
+export function DashboardMatrix({ sectores, camas, ocupacionesPorCama, onSeleccionarCama }: Props) {
   const camasPorSector = useMemo(() => {
     const mapa = new Map<string, Cama[]>();
     for (const c of camas) {
@@ -61,15 +62,17 @@ export function DashboardMatrix({ sectores, camas, ocupacionesPorCama }: Props) 
                 const m = ESTADOS_CAMA[cama.estado];
                 const ocupacion = ocupacionesPorCama.get(cama.id);
                 return (
-                  <div
+                  <button
                     key={cama.id}
+                    type="button"
+                    onClick={() => onSeleccionarCama(cama)}
                     title={ocupacion ? ocupacion.paciente.apellido_nombre : m.label}
-                    className={`flex aspect-square flex-col items-center justify-center rounded-md border ${m.border500} ${m.bg100}`}
+                    className={`flex aspect-square flex-col items-center justify-center rounded-md border transition hover:brightness-95 ${m.border500} ${m.bg100}`}
                   >
                     <span className={`font-mono text-sm font-semibold ${m.text700}`}>
                       {cama.numero_cama}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
