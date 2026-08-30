@@ -221,6 +221,32 @@ export type Database = {
         };
         Returns: string;
       };
+      ocupar_cama: {
+        Args: {
+          p_cama_id: string;
+          p_apellido_nombre: string;
+          p_diagnostico: string;
+          p_dni?: string;
+          p_domicilio?: string;
+          p_telefono?: string;
+        };
+        Returns: string;
+      };
+      liberar_cama: {
+        Args: { p_cama_id: string };
+        Returns: undefined;
+      };
+      editar_ocupacion: {
+        Args: {
+          p_cama_id: string;
+          p_apellido_nombre: string;
+          p_diagnostico: string;
+          p_dni?: string;
+          p_domicilio?: string;
+          p_telefono?: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       rol_sistema: RolSistema;
