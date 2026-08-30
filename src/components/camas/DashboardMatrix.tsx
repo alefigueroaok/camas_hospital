@@ -45,13 +45,17 @@ export function DashboardMatrix({ sectores, camas, ocupacionesPorCama, onSelecci
 
       {sectores.map((sector) => {
         const camasDelSector = camasPorSector.get(sector.id) ?? [];
+        const ocupadas = camasDelSector.filter((c) => c.estado === 'ocupada').length;
         return (
           <section
             key={sector.id}
             className="overflow-hidden rounded-card border border-superficie-200 bg-superficie-0 shadow-card"
           >
-            <header className="bg-institucional-800 px-5 py-3">
+            <header className="flex items-center justify-between bg-institucional-800 px-5 py-3">
               <h2 className="font-display text-base font-semibold text-white">{sector.nombre}</h2>
+              <span className="font-mono text-xs text-institucional-100">
+                {ocupadas} ocupada{ocupadas === 1 ? '' : 's'} / {camasDelSector.length}
+              </span>
             </header>
 
             <div className="grid grid-cols-6 gap-2 p-4 sm:grid-cols-8 md:grid-cols-10">
