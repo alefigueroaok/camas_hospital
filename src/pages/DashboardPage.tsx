@@ -6,12 +6,13 @@ import { CamaCardMobile } from '@/components/camas/CamaCardMobile';
 import { DashboardMatrix } from '@/components/camas/DashboardMatrix';
 import { supabase } from '@/lib/supabase';
 import { ROLES } from '@/constants/roles';
-import type { Sector } from '@/types/database.types';
+import type { Cama, Sector } from '@/types/database.types';
 
 export function DashboardPage() {
   const { persona, hospitalActual, rolActual } = useAuth();
   const { camas, ocupacionesPorCama, loading, error } = useCamasDelHospital(hospitalActual?.id);
   const [sectores, setSectores] = useState<Sector[]>([]);
+  const [camaSeleccionada, setCamaSeleccionada] = useState<Cama | null>(null);
 
   useEffect(() => {
     if (!hospitalActual) return;
@@ -85,9 +86,37 @@ export function DashboardPage() {
               sectores={sectores}
               camas={camas}
               ocupacionesPorCama={ocupacionesPorCama}
+              onSeleccionarCama={setCamaSeleccionada}
             />
           </div>
         </>
+      )}
+
+      {/* Panel de acción en desktop: reusa la misma tarjeta que ya
+          funciona en mobile, así la lógica de ocupar/liberar/editar
+          vive en un solo lugar. Buscamos la cama "viva" en el array
+          actual (no el objeto capturado al hacer clic) para que refleje
+          los cambios que llegan por Realtime mientras el panel está abierto. */}
+      {camaSeleccionada && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-superficie-900/40 p-4"
+          onClick={() => setCamaSeleccionada(null)}
+        >
+          <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <CamaCardMobile
+              cama={camas.find((c) => c.id === camaSeleccionada.id) ?? camaSeleccionada}
+              sectorNombre={nombreSector(camaSeleccionada.sector_id)}
+              ocupacion={ocupacionesPorCama.get(camaSeleccionada.id)}
+            />
+            <button
+              type="button"
+              onClick={() => setCamaSeleccionada(null)}
+              className="mt-3 min-h-touch w-full rounded-md border border-superficie-200 bg-superficie-0 text-sm text-superficie-600"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
