@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCamasDelHospital } from '@/hooks/useCamasDelHospital';
@@ -8,11 +8,22 @@ import { supabase } from '@/lib/supabase';
 import { ROLES } from '@/constants/roles';
 import type { Cama, Sector } from '@/types/database.types';
 
+const TODOS = 'todos';
+
+function ordenarPorNumero(camas: Cama[]): Cama[] {
+  return [...camas].sort((a, b) =>
+    a.numero_cama.localeCompare(b.numero_cama, 'es', { numeric: true })
+  );
+}
+
 export function DashboardPage() {
   const { persona, hospitalActual, rolActual } = useAuth();
   const { camas, ocupacionesPorCama, loading, error } = useCamasDelHospital(hospitalActual?.id);
   const [sectores, setSectores] = useState<Sector[]>([]);
   const [camaSeleccionada, setCamaSeleccionada] = useState<Cama | null>(null);
+
+  const storageKey = hospitalActual ? `hospital-camas:sector-actual:${hospitalActual.id}` : null;
+  const [sectorActualId, setSectorActualId] = useState<string>(TODOS);
 
   useEffect(() => {
     if (!hospitalActual) return;
@@ -22,9 +33,32 @@ export function DashboardPage() {
       .eq('hospital_id', hospitalActual.id)
       .order('nombre')
       .then(({ data }) => setSectores(data ?? []));
+
+    // Recordar el último sector elegido en ESTE hospital (uno puede
+    // trabajar en Maternidad hoy y en Guardia mañana).
+    if (storageKey) {
+      setSectorActualId(localStorage.getItem(storageKey) ?? TODOS);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hospitalActual?.id]);
 
+  function elegirSector(id: string) {
+    setSectorActualId(id);
+    if (storageKey) localStorage.setItem(storageKey, id);
+  }
+
   const nombreSector = (sectorId: string) => sectores.find((s) => s.id === sectorId)?.nombre;
+
+  const sectoresAMostrar = useMemo(
+    () => (sectorActualId === TODOS ? sectores : sectores.filter((s) => s.id === sectorActualId)),
+    [sectores, sectorActualId]
+  );
+
+  const camasAMostrar = useMemo(
+    () =>
+      sectorActualId === TODOS ? camas : camas.filter((c) => c.sector_id === sectorActualId),
+    [camas, sectorActualId]
+  );
 
   return (
     <div className="min-h-[calc(100vh-57px)] bg-superficie-50">
@@ -54,6 +88,27 @@ export function DashboardPage() {
         </div>
       )}
 
+      {sectores.length > 0 && (
+        <div className="px-6 pt-4">
+          <label htmlFor="sector-actual" className="mb-1 block text-xs text-superficie-400">
+            Sector
+          </label>
+          <select
+            id="sector-actual"
+            value={sectorActualId}
+            onChange={(e) => elegirSector(e.target.value)}
+            className="min-h-touch w-full max-w-xs rounded-md border border-superficie-200 bg-superficie-0 px-3 text-sm outline-none focus:ring-2 focus:ring-institucional-600"
+          >
+            <option value={TODOS}>Todos los sectores</option>
+            {sectores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="p-6">
         {loading && <p className="text-sm text-superficie-400">Cargando camas…</p>}
         {error && <p className="text-sm text-ocupada-700">Error: {error}</p>}
@@ -64,27 +119,45 @@ export function DashboardPage() {
         )}
       </div>
 
-      {!loading && !error && camas.length > 0 && (
+      {!loading && !error && camasAMostrar.length > 0 && (
         <>
-          {/* Mobile-first: tarjetas grandes y táctiles, una por fila. */}
-          <div className="px-6 pb-6 md:hidden">
-            <div className="space-y-3">
-              {camas.map((cama) => (
-                <CamaCardMobile
-                  key={cama.id}
-                  cama={cama}
-                  sectorNombre={nombreSector(cama.sector_id)}
-                  ocupacion={ocupacionesPorCama.get(cama.id)}
-                />
-              ))}
-            </div>
+          {/* Mobile-first: agrupado por sector, con contador de ocupación
+              y tarjetas grandes y táctiles, una por fila, en orden numérico. */}
+          <div className="space-y-6 px-6 pb-6 md:hidden">
+            {sectoresAMostrar.map((sector) => {
+              const camasDelSector = ordenarPorNumero(
+                camasAMostrar.filter((c) => c.sector_id === sector.id)
+              );
+              const ocupadas = camasDelSector.filter((c) => c.estado === 'ocupada').length;
+              if (camasDelSector.length === 0) return null;
+              return (
+                <div key={sector.id} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-display text-sm font-semibold text-superficie-900">
+                      {sector.nombre}
+                    </h2>
+                    <span className="font-mono text-xs text-superficie-400">
+                      {ocupadas} ocupada{ocupadas === 1 ? '' : 's'} / {camasDelSector.length}
+                    </span>
+                  </div>
+                  {camasDelSector.map((cama) => (
+                    <CamaCardMobile
+                      key={cama.id}
+                      cama={cama}
+                      sectorNombre={sector.nombre}
+                      ocupacion={ocupacionesPorCama.get(cama.id)}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
 
           {/* Desde md hacia arriba, la matriz agrupada por sector. */}
           <div className="hidden md:block">
             <DashboardMatrix
-              sectores={sectores}
-              camas={camas}
+              sectores={sectoresAMostrar}
+              camas={camasAMostrar}
               ocupacionesPorCama={ocupacionesPorCama}
               onSeleccionarCama={setCamaSeleccionada}
             />
