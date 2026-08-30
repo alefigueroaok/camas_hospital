@@ -89,8 +89,10 @@ export function GestionSectoresPage() {
 
     // Numeración automática: sigue después del número más alto que ya
     // exista en ESTE sector (ignorando números de cama no numéricos).
-    const existentes = camasPorSector.get(sector.id) ?? [];
-    const maxActual = existentes.reduce((max, c) => {
+    // El número de cama es único por HOSPITAL (no por sector) en la base
+    // de datos, así que la numeración automática tiene que evitar
+    // choques con camas de cualquier sector, no sólo con las de este.
+    const maxActual = camas.reduce((max, c) => {
       const n = parseInt(c.numero_cama, 10);
       return Number.isFinite(n) && n > max ? n : max;
     }, 0);
