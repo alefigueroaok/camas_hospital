@@ -74,7 +74,6 @@ export function GestionSectoresPage() {
   }
 
   async function handleAgregarCamas(sector: Sector) {
-    if (!hospitalActual) return;
     const cantidadTexto = cantidadPorSector[sector.id] ?? '';
     const cantidad = parseInt(cantidadTexto, 10);
 
@@ -87,23 +86,13 @@ export function GestionSectoresPage() {
     setAgregandoEnSector(sector.id);
     setMensaje(null);
 
-    // Numeración automática: sigue después del número más alto que ya
-    // exista en ESTE sector (ignorando números de cama no numéricos).
-    // El número de cama es único por HOSPITAL (no por sector) en la base
-    // de datos, así que la numeración automática tiene que evitar
-    // choques con camas de cualquier sector, no sólo con las de este.
-    const maxActual = camas.reduce((max, c) => {
-      const n = parseInt(c.numero_cama, 10);
-      return Number.isFinite(n) && n > max ? n : max;
-    }, 0);
-
-    const nuevasCamas = Array.from({ length: cantidad }, (_, i) => ({
-      hospital_id: hospitalActual.id,
-      sector_id: sector.id,
-      numero_cama: String(maxActual + i + 1),
-    }));
-
-    const { error } = await supabase.from('camas').insert(nuevasCamas);
+    // La numeración se calcula DENTRO de la base de datos (RPC
+    // agregar_camas_a_sector), no acá — así no depende de que el estado
+    // del navegador esté sincronizado con la base en este preciso momento.
+    const { error } = await supabase.rpc('agregar_camas_a_sector', {
+      p_sector_id: sector.id,
+      p_cantidad: cantidad,
+    });
 
     setAgregandoEnSector(null);
 
@@ -227,6 +216,3 @@ export function GestionSectoresPage() {
     </div>
   );
 }
-
-
-
