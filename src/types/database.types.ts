@@ -232,6 +232,10 @@ export type Database = {
         };
         Returns: string;
       };
+      agregar_camas_a_sector: {
+        Args: { p_sector_id: string; p_cantidad: number };
+        Returns: Cama[];
+      };
       liberar_cama: {
         Args: { p_cama_id: string };
         Returns: undefined;
