@@ -183,18 +183,44 @@ export function GestionSectoresPage() {
 
     const { error } = await supabase.from('camas').delete().eq('id', cama.id);
 
-    setEliminandoCamaId(null);
-
-    if (error) {
-      // La base bloquea el borrado si la cama tiene historial de ocupaciones
-      // (para no perder datos) — se lo mostramos tal cual en vez de un
-      // mensaje genérico, porque la razón real le sirve al administrador.
-      mostrarMensaje('No se pudo eliminar la cama ' + cama.numero_cama + ': ' + error.message, true);
+    if (!error) {
+      setEliminandoCamaId(null);
+      mostrarMensaje(`Cama ${cama.numero_cama} eliminada.`, false);
+      cargarTodo();
       return;
     }
 
-    mostrarMensaje(`Cama ${cama.numero_cama} eliminada.`, false);
-    cargarTodo();
+    // Código 23503 = violación de foreign key: esta cama tiene historial
+    // de ocupaciones (tuvo al menos un paciente alguna vez). En vez de
+    // sólo mostrar el error, ofrecemos el camino explícito de borrarla
+    // igual, con una advertencia fuerte — nunca por defecto.
+    if (error.code === '23503') {
+      const confirmarBorradoTotal = window.confirm(
+        `La cama ${cama.numero_cama} tiene historial de pacientes (tuvo alguna ocupación registrada).\n\n` +
+          `¿Querés borrarla de todas formas? Esto elimina PERMANENTEMENTE ese historial médico ` +
+          `junto con la cama. No se puede deshacer.`
+      );
+
+      if (confirmarBorradoTotal) {
+        const { error: errorForzado } = await supabase.rpc('eliminar_cama_con_historial', {
+          p_cama_id: cama.id,
+        });
+
+        setEliminandoCamaId(null);
+
+        if (errorForzado) {
+          mostrarMensaje('No se pudo eliminar: ' + errorForzado.message, true);
+          return;
+        }
+
+        mostrarMensaje(`Cama ${cama.numero_cama} y su historial fueron eliminados.`, false);
+        cargarTodo();
+        return;
+      }
+    }
+
+    setEliminandoCamaId(null);
+    mostrarMensaje('No se pudo eliminar la cama ' + cama.numero_cama + ': ' + error.message, true);
   }
 
   if (cargando) {
@@ -230,7 +256,25 @@ export function GestionSectoresPage() {
       </section>
 
       {mensaje && (
-        <p className={`text-sm ${mensajeEsError ? 'text-ocupada-700' : 'text-disponible-700'}`}>{mensaje}</p>
+        <div
+          className={`fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-card border p-4 text-sm shadow-card ${
+            mensajeEsError
+              ? 'border-ocupada-500 bg-ocupada-100 text-ocupada-700'
+              : 'border-disponible-500 bg-disponible-100 text-disponible-700'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p>{mensaje}</p>
+            <button
+              type="button"
+              onClick={() => setMensaje(null)}
+              className="shrink-0 text-current opacity-60 hover:opacity-100"
+              aria-label="Cerrar aviso"
+            >
+              ×
+            </button>
+          </div>
+        </div>
       )}
 
       <section className="space-y-4">
