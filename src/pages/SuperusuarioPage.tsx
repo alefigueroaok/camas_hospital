@@ -17,6 +17,11 @@ export function SuperusuarioPage() {
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [mensajeEsError, setMensajeEsError] = useState(false);
 
+  const [hospitalEditandoId, setHospitalEditandoId] = useState<string | null>(null);
+  const [edicion, setEdicion] = useState({ nombre: '', domicilio: '', directorNombre: '', telefono: '' });
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
+
   async function cargarHospitales() {
     setCargandoLista(true);
     const { data, error } = await supabase.from('hospitales').select('*').order('nombre');
@@ -63,6 +68,80 @@ export function SuperusuarioPage() {
 
   const formularioCompleto =
     nombre.trim() && domicilio.trim() && directorNombre.trim() && telefono.trim();
+
+  function iniciarEdicion(h: Hospital) {
+    setHospitalEditandoId(h.id);
+    setEdicion({
+      nombre: h.nombre,
+      domicilio: h.domicilio,
+      directorNombre: h.director_nombre,
+      telefono: h.telefono,
+    });
+  }
+
+  function cancelarEdicion() {
+    setHospitalEditandoId(null);
+  }
+
+  async function guardarEdicion(h: Hospital) {
+    if (!edicion.nombre.trim() || !edicion.domicilio.trim() || !edicion.directorNombre.trim() || !edicion.telefono.trim()) {
+      setMensaje('Completá todos los campos.');
+      setMensajeEsError(true);
+      return;
+    }
+
+    setGuardandoEdicion(true);
+    setMensaje(null);
+
+    const { error } = await supabase
+      .from('hospitales')
+      .update({
+        nombre: edicion.nombre.trim(),
+        domicilio: edicion.domicilio.trim(),
+        director_nombre: edicion.directorNombre.trim(),
+        telefono: edicion.telefono.trim(),
+      })
+      .eq('id', h.id);
+
+    setGuardandoEdicion(false);
+
+    if (error) {
+      setMensaje('No se pudo guardar: ' + error.message);
+      setMensajeEsError(true);
+      return;
+    }
+
+    setHospitalEditandoId(null);
+    setMensaje(`"${edicion.nombre}" actualizado.`);
+    setMensajeEsError(false);
+    cargarHospitales();
+  }
+
+  async function eliminarHospital(h: Hospital) {
+    if (!window.confirm(`¿Eliminar el hospital "${h.nombre}"? No se puede deshacer.`)) return;
+
+    setEliminandoId(h.id);
+    setMensaje(null);
+
+    const { error } = await supabase.from('hospitales').delete().eq('id', h.id);
+
+    setEliminandoId(null);
+
+    if (error) {
+      // Si tiene sectores/camas/personal cargado, la base bloquea el
+      // borrado para no perder esos datos — se lo mostramos tal cual.
+      setMensaje(
+        `No se pudo eliminar "${h.nombre}": tiene datos cargados (sectores, camas o personal). ` +
+          'Borrá primero eso, o dejalo inactivo en vez de eliminarlo.'
+      );
+      setMensajeEsError(true);
+      return;
+    }
+
+    setMensaje(`"${h.nombre}" eliminado.`);
+    setMensajeEsError(false);
+    cargarHospitales();
+  }
 
   return (
     <div className="min-h-screen space-y-8 bg-superficie-50 p-6">
@@ -159,17 +238,94 @@ export function SuperusuarioPage() {
                   <th className="px-4 py-2">Domicilio</th>
                   <th className="px-4 py-2">Director</th>
                   <th className="px-4 py-2">Teléfono</th>
+                  <th className="px-4 py-2">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {hospitales.map((h) => (
-                  <tr key={h.id} className="border-t border-superficie-200">
-                    <td className="px-4 py-2 font-medium text-superficie-900">{h.nombre}</td>
-                    <td className="px-4 py-2 text-superficie-600">{h.domicilio}</td>
-                    <td className="px-4 py-2 text-superficie-600">{h.director_nombre}</td>
-                    <td className="px-4 py-2 font-mono text-xs text-superficie-600">{h.telefono}</td>
-                  </tr>
-                ))}
+                {hospitales.map((h) => {
+                  const editando = hospitalEditandoId === h.id;
+                  return (
+                    <tr key={h.id} className="border-t border-superficie-200 align-top">
+                      {editando ? (
+                        <>
+                          <td className="px-4 py-2">
+                            <input
+                              value={edicion.nombre}
+                              onChange={(e) => setEdicion((p) => ({ ...p, nombre: e.target.value }))}
+                              className="min-h-touch w-full rounded-md border border-institucional-500 px-2 text-sm"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              value={edicion.domicilio}
+                              onChange={(e) => setEdicion((p) => ({ ...p, domicilio: e.target.value }))}
+                              className="min-h-touch w-full rounded-md border border-institucional-500 px-2 text-sm"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              value={edicion.directorNombre}
+                              onChange={(e) => setEdicion((p) => ({ ...p, directorNombre: e.target.value }))}
+                              className="min-h-touch w-full rounded-md border border-institucional-500 px-2 text-sm"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              value={edicion.telefono}
+                              onChange={(e) => setEdicion((p) => ({ ...p, telefono: e.target.value }))}
+                              className="min-h-touch w-full rounded-md border border-institucional-500 px-2 text-sm"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => guardarEdicion(h)}
+                                disabled={guardandoEdicion}
+                                className="rounded-md bg-institucional-600 px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelarEdicion}
+                                className="rounded-md border border-superficie-200 px-2 py-1 text-xs text-superficie-600"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-2 font-medium text-superficie-900">{h.nombre}</td>
+                          <td className="px-4 py-2 text-superficie-600">{h.domicilio}</td>
+                          <td className="px-4 py-2 text-superficie-600">{h.director_nombre}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-superficie-600">{h.telefono}</td>
+                          <td className="px-4 py-2">
+                            <div className="flex gap-3">
+                              <button
+                                type="button"
+                                onClick={() => iniciarEdicion(h)}
+                                className="text-xs text-institucional-600 underline underline-offset-2"
+                              >
+                                ✏️ Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => eliminarHospital(h)}
+                                disabled={eliminandoId === h.id}
+                                className="text-xs text-ocupada-700 underline underline-offset-2 disabled:opacity-50"
+                              >
+                                {eliminandoId === h.id ? 'Eliminando…' : '🗑️ Eliminar'}
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
