@@ -236,6 +236,10 @@ export type Database = {
         Args: { p_sector_id: string; p_cantidad: number };
         Returns: Cama[];
       };
+      eliminar_cama_con_historial: {
+        Args: { p_cama_id: string };
+        Returns: undefined;
+      };
       liberar_cama: {
         Args: { p_cama_id: string };
         Returns: undefined;
