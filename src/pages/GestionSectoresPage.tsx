@@ -22,6 +22,19 @@ export function GestionSectoresPage() {
   const [cantidadPorSector, setCantidadPorSector] = useState<Record<string, string>>({});
   const [agregandoEnSector, setAgregandoEnSector] = useState<string | null>(null);
 
+  // Edición de nombre de sector.
+  const [sectorEditandoId, setSectorEditandoId] = useState<string | null>(null);
+  const [nombreEditado, setNombreEditado] = useState('');
+  const [guardandoNombre, setGuardandoNombre] = useState(false);
+
+  const [eliminandoSectorId, setEliminandoSectorId] = useState<string | null>(null);
+  const [eliminandoCamaId, setEliminandoCamaId] = useState<string | null>(null);
+
+  function mostrarMensaje(texto: string, esError: boolean) {
+    setMensaje(texto);
+    setMensajeEsError(esError);
+  }
+
   async function cargarTodo() {
     if (!hospitalActual) return;
     setCargando(true);
@@ -48,6 +61,9 @@ export function GestionSectoresPage() {
       lista.push(cama);
       mapa.set(cama.sector_id, lista);
     }
+    for (const lista of mapa.values()) {
+      lista.sort((a, b) => a.numero_cama.localeCompare(b.numero_cama, 'es', { numeric: true }));
+    }
     return mapa;
   }, [camas]);
 
@@ -64,8 +80,7 @@ export function GestionSectoresPage() {
     setCreandoSector(false);
 
     if (error) {
-      setMensaje('No se pudo crear el sector: ' + error.message);
-      setMensajeEsError(true);
+      mostrarMensaje('No se pudo crear el sector: ' + error.message, true);
       return;
     }
 
@@ -78,8 +93,7 @@ export function GestionSectoresPage() {
     const cantidad = parseInt(cantidadTexto, 10);
 
     if (!Number.isFinite(cantidad) || cantidad < 1) {
-      setMensaje('Poné una cantidad válida (1 o más).');
-      setMensajeEsError(true);
+      mostrarMensaje('Poné una cantidad válida (1 o más).', true);
       return;
     }
 
@@ -87,8 +101,7 @@ export function GestionSectoresPage() {
     setMensaje(null);
 
     // La numeración se calcula DENTRO de la base de datos (RPC
-    // agregar_camas_a_sector), no acá — así no depende de que el estado
-    // del navegador esté sincronizado con la base en este preciso momento.
+    // agregar_camas_a_sector, única POR SECTOR), no acá.
     const { error } = await supabase.rpc('agregar_camas_a_sector', {
       p_sector_id: sector.id,
       p_cantidad: cantidad,
@@ -97,14 +110,90 @@ export function GestionSectoresPage() {
     setAgregandoEnSector(null);
 
     if (error) {
-      setMensaje('No se pudieron agregar las camas: ' + error.message);
-      setMensajeEsError(true);
+      mostrarMensaje('No se pudieron agregar las camas: ' + error.message, true);
       return;
     }
 
     setCantidadPorSector((prev) => ({ ...prev, [sector.id]: '' }));
-    setMensaje(`Se agregaron ${cantidad} cama(s) a ${sector.nombre}.`);
-    setMensajeEsError(false);
+    mostrarMensaje(`Se agregaron ${cantidad} cama(s) a ${sector.nombre}.`, false);
+    cargarTodo();
+  }
+
+  function iniciarEdicionNombre(sector: Sector) {
+    setSectorEditandoId(sector.id);
+    setNombreEditado(sector.nombre);
+  }
+
+  function cancelarEdicionNombre() {
+    setSectorEditandoId(null);
+    setNombreEditado('');
+  }
+
+  async function guardarNombreSector(sector: Sector) {
+    if (!nombreEditado.trim()) return;
+    setGuardandoNombre(true);
+    setMensaje(null);
+
+    const { error } = await supabase
+      .from('sectores')
+      .update({ nombre: nombreEditado.trim() })
+      .eq('id', sector.id);
+
+    setGuardandoNombre(false);
+
+    if (error) {
+      mostrarMensaje('No se pudo renombrar: ' + error.message, true);
+      return;
+    }
+
+    setSectorEditandoId(null);
+    mostrarMensaje(`Sector renombrado a "${nombreEditado.trim()}".`, false);
+    cargarTodo();
+  }
+
+  async function eliminarSector(sector: Sector) {
+    const camasDelSector = camasPorSector.get(sector.id) ?? [];
+    if (camasDelSector.length > 0) {
+      mostrarMensaje('Este sector todavía tiene camas — borralas primero.', true);
+      return;
+    }
+    if (!window.confirm(`¿Eliminar el sector "${sector.nombre}"? No se puede deshacer.`)) return;
+
+    setEliminandoSectorId(sector.id);
+    setMensaje(null);
+
+    const { error } = await supabase.from('sectores').delete().eq('id', sector.id);
+
+    setEliminandoSectorId(null);
+
+    if (error) {
+      mostrarMensaje('No se pudo eliminar el sector: ' + error.message, true);
+      return;
+    }
+
+    mostrarMensaje(`Sector "${sector.nombre}" eliminado.`, false);
+    cargarTodo();
+  }
+
+  async function eliminarCama(cama: Cama) {
+    if (!window.confirm(`¿Eliminar la cama ${cama.numero_cama}?`)) return;
+
+    setEliminandoCamaId(cama.id);
+    setMensaje(null);
+
+    const { error } = await supabase.from('camas').delete().eq('id', cama.id);
+
+    setEliminandoCamaId(null);
+
+    if (error) {
+      // La base bloquea el borrado si la cama tiene historial de ocupaciones
+      // (para no perder datos) — se lo mostramos tal cual en vez de un
+      // mensaje genérico, porque la razón real le sirve al administrador.
+      mostrarMensaje('No se pudo eliminar la cama ' + cama.numero_cama + ': ' + error.message, true);
+      return;
+    }
+
+    mostrarMensaje(`Cama ${cama.numero_cama} eliminada.`, false);
     cargarTodo();
   }
 
@@ -155,18 +244,71 @@ export function GestionSectoresPage() {
 
         {sectores.map((sector) => {
           const camasDelSector = camasPorSector.get(sector.id) ?? [];
+          const editandoEsteNombre = sectorEditandoId === sector.id;
+
           return (
             <div
               key={sector.id}
               className="space-y-3 rounded-card border border-superficie-200 bg-superficie-0 p-5 shadow-card"
             >
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-base font-semibold text-superficie-900">
-                  {sector.nombre}
-                </h3>
-                <span className="text-xs text-superficie-400">
-                  {camasDelSector.length} cama{camasDelSector.length === 1 ? '' : 's'}
-                </span>
+              <div className="flex items-center justify-between gap-3">
+                {editandoEsteNombre ? (
+                  <div className="flex flex-1 items-center gap-2">
+                    <input
+                      value={nombreEditado}
+                      onChange={(e) => setNombreEditado(e.target.value)}
+                      autoFocus
+                      className="min-h-touch flex-1 rounded-md border border-institucional-500 px-3 text-sm outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => guardarNombreSector(sector)}
+                      disabled={!nombreEditado.trim() || guardandoNombre}
+                      className="min-h-touch rounded-md bg-institucional-600 px-3 text-xs font-semibold text-white disabled:opacity-60"
+                    >
+                      {guardandoNombre ? 'Guardando…' : 'Guardar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelarEdicionNombre}
+                      className="min-h-touch rounded-md border border-superficie-200 px-3 text-xs text-superficie-600"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="font-display text-base font-semibold text-superficie-900">
+                      {sector.nombre}
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-superficie-400">
+                        {camasDelSector.length} cama{camasDelSector.length === 1 ? '' : 's'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => iniciarEdicionNombre(sector)}
+                        title="Renombrar sector"
+                        className="text-xs text-institucional-600 underline underline-offset-2"
+                      >
+                        ✏️ Renombrar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminarSector(sector)}
+                        disabled={camasDelSector.length > 0 || eliminandoSectorId === sector.id}
+                        title={
+                          camasDelSector.length > 0
+                            ? 'Borrá primero todas las camas de este sector'
+                            : 'Eliminar sector'
+                        }
+                        className="text-xs text-ocupada-700 underline underline-offset-2 disabled:cursor-not-allowed disabled:text-superficie-300 disabled:no-underline"
+                      >
+                        {eliminandoSectorId === sector.id ? 'Eliminando…' : '🗑️ Eliminar'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               {camasDelSector.length > 0 && (
@@ -176,10 +318,19 @@ export function GestionSectoresPage() {
                     return (
                       <span
                         key={cama.id}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${meta.bg100} ${meta.text700}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full py-1 pl-2.5 pr-1.5 text-xs font-medium ${meta.bg100} ${meta.text700}`}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full ${meta.solid500}`} aria-hidden />
                         {cama.numero_cama}
+                        <button
+                          type="button"
+                          onClick={() => eliminarCama(cama)}
+                          disabled={eliminandoCamaId === cama.id}
+                          title="Eliminar esta cama"
+                          className="ml-0.5 rounded-full px-1 text-superficie-400 hover:bg-superficie-0 hover:text-ocupada-700 disabled:opacity-50"
+                        >
+                          ×
+                        </button>
                       </span>
                     );
                   })}
