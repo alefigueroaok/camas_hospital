@@ -5,9 +5,13 @@ export function HospitalGuard() {
   const { persona, hospitalActual, asignaciones, loading } = useAuth();
 
   if (loading) return null;
-  if (persona?.es_superusuario) return <Outlet />;
 
   if (asignaciones.length === 0) {
+    // Superusuario sin ningún hospital creado todavía: no hay nada para
+    // elegir, lo dejamos pasar (va a ver el dashboard vacío, lo cual está
+    // bien — el primer paso lógico ahí es crear un hospital).
+    if (persona?.es_superusuario) return <Outlet />;
+
     return (
       <div className="flex min-h-screen items-center justify-center bg-superficie-50 p-6 text-center">
         <p className="max-w-sm text-sm text-superficie-600">
