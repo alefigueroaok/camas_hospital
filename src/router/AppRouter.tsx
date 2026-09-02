@@ -9,6 +9,8 @@ import { SuperusuarioPage } from '@/pages/SuperusuarioPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { AltaPersonalPage } from '@/pages/AltaPersonalPage';
 import { GestionSectoresPage } from '@/pages/GestionSectoresPage';
+import { DerivarPacientePage } from '@/pages/DerivarPacientePage';
+import { SolicitudesPage } from '@/pages/SolicitudesPage';
 import { ROLES } from '@/constants/roles';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -37,6 +39,11 @@ export function AppRouter() {
                 <Route path="/alta-personal" element={<AltaPersonalPage />} />
                 <Route path="/sectores" element={<GestionSectoresPage />} />
               </Route>
+
+              <Route element={<RoleGuard allowedRoles={[ROLES.MEDICO, ROLES.ADMINISTRACION]} />}>
+                <Route path="/derivar" element={<DerivarPacientePage />} />
+                <Route path="/solicitudes" element={<SolicitudesPage />} />
+              </Route>
             </Route>
           </Route>
         </Route>
@@ -47,4 +54,3 @@ export function AppRouter() {
     </BrowserRouter>
   );
 }
-
