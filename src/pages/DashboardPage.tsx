@@ -88,6 +88,23 @@ export function DashboardPage() {
         </div>
       )}
 
+      {(rolActual === ROLES.MEDICO || rolActual === ROLES.ADMINISTRACION) && (
+        <div className="flex flex-wrap gap-3 px-6 pt-4">
+          <Link
+            to="/derivar"
+            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
+          >
+            Derivar paciente
+          </Link>
+          <Link
+            to="/solicitudes"
+            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
+          >
+            Solicitudes
+          </Link>
+        </div>
+      )}
+
       {sectores.length > 0 && (
         <div className="px-6 pt-4">
           <label htmlFor="sector-actual" className="mb-1 block text-xs text-superficie-400">
