@@ -240,6 +240,26 @@ export type Database = {
         Args: { p_cama_id: string };
         Returns: undefined;
       };
+      solicitar_reserva_derivacion: {
+        Args: {
+          p_cama_id: string;
+          p_hospital_origen_id: string;
+          p_apellido_nombre: string;
+          p_diagnostico: string;
+          p_dni?: string;
+          p_domicilio?: string;
+          p_telefono?: string;
+        };
+        Returns: string;
+      };
+      aceptar_solicitud_derivacion: {
+        Args: { p_solicitud_id: string };
+        Returns: undefined;
+      };
+      rechazar_solicitud_derivacion: {
+        Args: { p_solicitud_id: string };
+        Returns: undefined;
+      };
       liberar_cama: {
         Args: { p_cama_id: string };
         Returns: undefined;
