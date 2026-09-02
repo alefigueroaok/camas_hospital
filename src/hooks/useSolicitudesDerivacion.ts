@@ -1,287 +1,112 @@
-// Tipos que reflejan schema_multi_hospital.sql (v2, con "pacientes" global).
-// En un proyecto real, regenerar con:
-//   npx supabase gen types typescript --project-id <id> > src/types/database.types.ts
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { Cama, Hospital, Paciente, SolicitudDerivacion } from '@/types/database.types';
 
-export type RolSistema = 'enfermeria' | 'medico' | 'administracion';
-export type EstadoCama = 'libre' | 'ocupada' | 'reservada';
-export type EstadoSolicitud = 'pendiente' | 'aceptada' | 'rechazada' | 'cancelada';
-export type TipoNotificacion =
-  | 'derivacion_pedido'
-  | 'derivacion_aceptada'
-  | 'derivacion_rechazada'
-  | 'novedad';
+export interface SolicitudConDetalle extends SolicitudDerivacion {
+  paciente: Paciente;
+  hospitalOrigen: Hospital;
+  hospitalDestino: Hospital;
+  cama: Cama;
+}
 
-// IMPORTANTE: son "type", no "interface" — una interface no satisface el
-// tipado interno de postgrest-js (Row/Insert/Update deben ser asignables
-// a Record<string, unknown>), y el error resultante es muy confuso.
+interface Resultado {
+  entrantes: SolicitudConDetalle[];
+  enviadas: SolicitudConDetalle[];
+  loading: boolean;
+}
 
-export type Hospital = {
-  id: string;
-  nombre: string;
-  domicilio: string;
-  telefono: string;
-  director_nombre: string;
-  activo: boolean;
-  created_at: string;
-};
+/**
+ * Solicitudes de derivación donde este hospital es origen o destino, con
+ * los datos de paciente/hospitales/cama ya resueltos. Se re-sincroniza
+ * solo vía Realtime (necesita: alter publication supabase_realtime add
+ * table public.solicitudes_derivacion;).
+ */
+export function useSolicitudesDerivacion(hospitalId?: string): Resultado {
+  const [entrantes, setEntrantes] = useState<SolicitudConDetalle[]>([]);
+  const [enviadas, setEnviadas] = useState<SolicitudConDetalle[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export type Persona = {
-  id: string;
-  dni: string;
-  apellido: string;
-  nombre: string;
-  email: string;
-  es_superusuario: boolean;
-  created_at: string;
-  updated_at: string;
-};
+  const cargar = useCallback(async () => {
+    if (!hospitalId) return;
 
-export type HospitalUsuario = {
-  id: string;
-  persona_id: string;
-  hospital_id: string;
-  rol: RolSistema;
-  profesion_funcion: string;
-  activo: boolean;
-  created_at: string;
-};
+    const [{ data: entrantesData }, { data: enviadasData }] = await Promise.all([
+      supabase
+        .from('solicitudes_derivacion')
+        .select('*')
+        .eq('hospital_destino_id', hospitalId)
+        .order('fecha_solicitud', { ascending: false }),
+      supabase
+        .from('solicitudes_derivacion')
+        .select('*')
+        .eq('hospital_origen_id', hospitalId)
+        .order('fecha_solicitud', { ascending: false }),
+    ]);
 
-export type Sector = {
-  id: string;
-  hospital_id: string;
-  nombre: string;
-  created_at: string;
-};
+    const todas = [...(entrantesData ?? []), ...(enviadasData ?? [])];
 
-export type Cama = {
-  id: string;
-  hospital_id: string;
-  sector_id: string;
-  numero_cama: string;
-  estado: EstadoCama;
-  derivado_de_hospital_id: string | null;
-  fecha_ultimo_cambio: string;
-  created_at: string;
-};
+    const pacienteIds = [...new Set(todas.map((s) => s.paciente_id))];
+    const hospitalIds = [...new Set(todas.flatMap((s) => [s.hospital_origen_id, s.hospital_destino_id]))];
+    const camaIds = [...new Set(todas.map((s) => s.cama_id))];
 
-export type Paciente = {
-  id: string;
-  dni: string | null;
-  apellido_nombre: string;
-  domicilio: string | null;
-  telefono: string | null;
-  created_at: string;
-  updated_at: string;
-};
+    const [{ data: pacientesData }, { data: hospitalesData }, { data: camasData }] = await Promise.all([
+      pacienteIds.length ? supabase.from('pacientes').select('*').in('id', pacienteIds) : Promise.resolve({ data: [] as Paciente[] }),
+      hospitalIds.length ? supabase.from('hospitales').select('*').in('id', hospitalIds) : Promise.resolve({ data: [] as Hospital[] }),
+      camaIds.length ? supabase.from('camas').select('*').in('id', camaIds) : Promise.resolve({ data: [] as Cama[] }),
+    ]);
 
-export type SolicitudDerivacion = {
-  id: string;
-  cama_id: string;
-  hospital_origen_id: string;
-  hospital_destino_id: string;
-  medico_origen_id: string;
-  medico_destino_id: string | null;
-  estado: EstadoSolicitud;
-  paciente_id: string;
-  diagnostico: string;
-  fecha_solicitud: string;
-  fecha_resolucion: string | null;
-  created_at: string;
-};
+    const pacientesPorId = new Map((pacientesData ?? []).map((p) => [p.id, p]));
+    const hospitalesPorId = new Map((hospitalesData ?? []).map((h) => [h.id, h]));
+    const camasPorId = new Map((camasData ?? []).map((c) => [c.id, c]));
 
-export type Ocupacion = {
-  id: string;
-  cama_id: string;
-  hospital_id: string;
-  paciente_id: string;
-  diagnostico: string;
-  fecha_ingreso: string;
-  fecha_egreso: string | null;
-  derivado_de_hospital_id: string | null;
-  solicitud_derivacion_id: string | null;
-  creado_por: string | null;
-  actualizado_por: string | null;
-  created_at: string;
-};
+    function enriquecer(lista: SolicitudDerivacion[]): SolicitudConDetalle[] {
+      return lista
+        .map((s) => {
+          const paciente = pacientesPorId.get(s.paciente_id);
+          const hospitalOrigen = hospitalesPorId.get(s.hospital_origen_id);
+          const hospitalDestino = hospitalesPorId.get(s.hospital_destino_id);
+          const cama = camasPorId.get(s.cama_id);
+          if (!paciente || !hospitalOrigen || !hospitalDestino || !cama) return null;
+          return { ...s, paciente, hospitalOrigen, hospitalDestino, cama };
+        })
+        .filter((x): x is SolicitudConDetalle => x !== null);
+    }
 
-export type Notificacion = {
-  id: string;
-  persona_id: string;
-  hospital_id: string | null;
-  tipo: TipoNotificacion;
-  referencia_id: string | null;
-  mensaje: string;
-  leida: boolean;
-  created_at: string;
-};
+    setEntrantes(enriquecer(entrantesData ?? []));
+    setEnviadas(enriquecer(enviadasData ?? []));
+    setLoading(false);
+  }, [hospitalId]);
 
-export type Novedad = {
-  id: string;
-  hospital_id: string;
-  autor_id: string;
-  mensaje: string;
-  activa: boolean;
-  created_at: string;
-};
+  useEffect(() => {
+    setLoading(true);
+    cargar();
 
-export type NovedadVista = {
-  id: string;
-  novedad_id: string;
-  persona_id: string;
-  visto_at: string;
-};
+    if (!hospitalId) return;
 
-export type AuditoriaCama = {
-  id: string;
-  cama_id: string;
-  hospital_id: string;
-  estado_anterior: EstadoCama | null;
-  estado_nuevo: EstadoCama;
-  persona_id: string | null;
-  timestamp: string;
-};
+    // Dos suscripciones porque el filtro de Realtime sólo admite una
+    // condición de igualdad — este hospital puede ser origen O destino.
+    const channel = supabase
+      .channel(`solicitudes-${hospitalId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'solicitudes_derivacion', filter: `hospital_destino_id=eq.${hospitalId}` },
+        () => cargar()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'solicitudes_derivacion', filter: `hospital_origen_id=eq.${hospitalId}` },
+        () => cargar()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'camas', filter: `hospital_id=eq.${hospitalId}` },
+        () => cargar()
+      )
+      .subscribe();
 
-export type PushSubscription = {
-  id: string;
-  persona_id: string;
-  endpoint: string;
-  p256dh: string;
-  auth_key: string;
-  created_at: string;
-};
-
-export type Database = {
-  public: {
-    Tables: {
-      hospitales: { Row: Hospital; Insert: Partial<Hospital>; Update: Partial<Hospital>; Relationships: [] };
-      personas: { Row: Persona; Insert: Partial<Persona>; Update: Partial<Persona>; Relationships: [] };
-      hospital_usuarios: {
-        Row: HospitalUsuario;
-        Insert: Partial<HospitalUsuario>;
-        Update: Partial<HospitalUsuario>;
-        Relationships: [];
-      };
-      sectores: { Row: Sector; Insert: Partial<Sector>; Update: Partial<Sector>; Relationships: [] };
-      camas: { Row: Cama; Insert: Partial<Cama>; Update: Partial<Cama>; Relationships: [] };
-      pacientes: { Row: Paciente; Insert: Partial<Paciente>; Update: Partial<Paciente>; Relationships: [] };
-      solicitudes_derivacion: {
-        Row: SolicitudDerivacion;
-        Insert: Partial<SolicitudDerivacion>;
-        Update: Partial<SolicitudDerivacion>;
-        Relationships: [];
-      };
-      ocupaciones: { Row: Ocupacion; Insert: Partial<Ocupacion>; Update: Partial<Ocupacion>; Relationships: [] };
-      notificaciones: {
-        Row: Notificacion;
-        Insert: Partial<Notificacion>;
-        Update: Partial<Notificacion>;
-        Relationships: [];
-      };
-      novedades: { Row: Novedad; Insert: Partial<Novedad>; Update: Partial<Novedad>; Relationships: [] };
-      novedades_vistas: {
-        Row: NovedadVista;
-        Insert: Partial<NovedadVista>;
-        Update: Partial<NovedadVista>;
-        Relationships: [];
-      };
-      auditoria_camas: {
-        Row: AuditoriaCama;
-        Insert: Partial<AuditoriaCama>;
-        Update: Partial<AuditoriaCama>;
-        Relationships: [];
-      };
-      push_subscriptions: {
-        Row: PushSubscription;
-        Insert: Partial<PushSubscription>;
-        Update: Partial<PushSubscription>;
-        Relationships: [];
-      };
+    return () => {
+      supabase.removeChannel(channel);
     };
-    Views: Record<string, never>;
-    Functions: {
-      buscar_persona_por_dni: {
-        Args: { p_dni: string };
-        Returns: { id: string; apellido: string; nombre: string }[];
-      };
-      alta_persona_en_hospital: {
-        Args: {
-          p_persona_id: string;
-          p_hospital_id: string;
-          p_rol: RolSistema;
-          p_profesion_funcion: string;
-        };
-        Returns: undefined;
-      };
-      crear_hospital: {
-        Args: {
-          p_nombre: string;
-          p_domicilio: string;
-          p_director_nombre: string;
-          p_telefono: string;
-        };
-        Returns: string;
-      };
-      ocupar_cama: {
-        Args: {
-          p_cama_id: string;
-          p_apellido_nombre: string;
-          p_diagnostico: string;
-          p_dni?: string;
-          p_domicilio?: string;
-          p_telefono?: string;
-        };
-        Returns: string;
-      };
-      agregar_camas_a_sector: {
-        Args: { p_sector_id: string; p_cantidad: number };
-        Returns: Cama[];
-      };
-      eliminar_cama_con_historial: {
-        Args: { p_cama_id: string };
-        Returns: undefined;
-      };
-      solicitar_reserva_derivacion: {
-        Args: {
-          p_cama_id: string;
-          p_hospital_origen_id: string;
-          p_apellido_nombre: string;
-          p_diagnostico: string;
-          p_dni?: string;
-          p_domicilio?: string;
-          p_telefono?: string;
-        };
-        Returns: string;
-      };
-      aceptar_solicitud_derivacion: {
-        Args: { p_solicitud_id: string };
-        Returns: undefined;
-      };
-      rechazar_solicitud_derivacion: {
-        Args: { p_solicitud_id: string };
-        Returns: undefined;
-      };
-      liberar_cama: {
-        Args: { p_cama_id: string };
-        Returns: undefined;
-      };
-      editar_ocupacion: {
-        Args: {
-          p_cama_id: string;
-          p_apellido_nombre: string;
-          p_diagnostico: string;
-          p_dni?: string;
-          p_domicilio?: string;
-          p_telefono?: string;
-        };
-        Returns: undefined;
-      };
-    };
-    Enums: {
-      rol_sistema: RolSistema;
-      estado_cama: EstadoCama;
-      estado_solicitud: EstadoSolicitud;
-      tipo_notificacion: TipoNotificacion;
-    };
-    CompositeTypes: Record<string, never>;
-  };
-};
+  }, [hospitalId, cargar]);
+
+  return { entrantes, enviadas, loading };
+}
