@@ -85,6 +85,12 @@ export function DashboardPage() {
           >
             Sectores y camas
           </Link>
+          <Link
+            to="/personal"
+            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
+          >
+            Personal
+          </Link>
         </div>
       )}
 
