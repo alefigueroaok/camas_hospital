@@ -105,6 +105,15 @@ export function DashboardPage() {
         </div>
       )}
 
+      <div className="flex flex-wrap gap-3 px-6 pt-4">
+        <Link
+          to="/historial"
+          className="inline-block rounded-md border border-superficie-300 px-4 py-2 text-sm font-medium text-superficie-600"
+        >
+          Historial de altas
+        </Link>
+      </div>
+
       {sectores.length > 0 && (
         <div className="px-6 pt-4">
           <label htmlFor="sector-actual" className="mb-1 block text-xs text-superficie-400">
