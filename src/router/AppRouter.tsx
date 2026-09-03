@@ -11,6 +11,7 @@ import { AltaPersonalPage } from '@/pages/AltaPersonalPage';
 import { GestionSectoresPage } from '@/pages/GestionSectoresPage';
 import { DerivarPacientePage } from '@/pages/DerivarPacientePage';
 import { SolicitudesPage } from '@/pages/SolicitudesPage';
+import { HistorialAltasPage } from '@/pages/HistorialAltasPage';
 import { ROLES } from '@/constants/roles';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -34,6 +35,7 @@ export function AppRouter() {
           <Route element={<HospitalGuard />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/historial" element={<HistorialAltasPage />} />
 
               <Route element={<RoleGuard allowedRoles={[ROLES.ADMINISTRACION]} />}>
                 <Route path="/alta-personal" element={<AltaPersonalPage />} />
