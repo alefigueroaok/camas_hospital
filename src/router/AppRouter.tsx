@@ -13,6 +13,7 @@ import { DerivarPacientePage } from '@/pages/DerivarPacientePage';
 import { SolicitudesPage } from '@/pages/SolicitudesPage';
 import { HistorialAltasPage } from '@/pages/HistorialAltasPage';
 import { PersonalPage } from '@/pages/PersonalPage';
+import { NovedadesPage } from '@/pages/NovedadesPage';
 import { ROLES } from '@/constants/roles';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -42,6 +43,7 @@ export function AppRouter() {
                 <Route path="/alta-personal" element={<AltaPersonalPage />} />
                 <Route path="/sectores" element={<GestionSectoresPage />} />
                 <Route path="/personal" element={<PersonalPage />} />
+                <Route path="/novedades" element={<NovedadesPage />} />
               </Route>
 
               <Route element={<RoleGuard allowedRoles={[ROLES.MEDICO, ROLES.ADMINISTRACION]} />}>
