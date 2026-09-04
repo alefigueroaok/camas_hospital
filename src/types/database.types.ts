@@ -260,6 +260,10 @@ export type Database = {
         Args: { p_solicitud_id: string };
         Returns: undefined;
       };
+      marcar_novedad_vista: {
+        Args: { p_novedad_id: string };
+        Returns: undefined;
+      };
       liberar_cama: {
         Args: { p_cama_id: string };
         Returns: undefined;
