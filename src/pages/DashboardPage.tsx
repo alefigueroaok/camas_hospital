@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCamasDelHospital } from '@/hooks/useCamasDelHospital';
+import { useNovedadesPendientes } from '@/hooks/useNovedadesPendientes';
 import { CamaCardMobile } from '@/components/camas/CamaCardMobile';
 import { DashboardMatrix } from '@/components/camas/DashboardMatrix';
 import { supabase } from '@/lib/supabase';
@@ -19,6 +20,10 @@ function ordenarPorNumero(camas: Cama[]): Cama[] {
 export function DashboardPage() {
   const { persona, hospitalActual, rolActual } = useAuth();
   const { camas, ocupacionesPorCama, loading, error } = useCamasDelHospital(hospitalActual?.id);
+  const { pendientes: novedadesPendientes, marcarVista } = useNovedadesPendientes(
+    hospitalActual?.id,
+    persona?.id
+  );
   const [sectores, setSectores] = useState<Sector[]>([]);
   const [camaSeleccionada, setCamaSeleccionada] = useState<Cama | null>(null);
 
@@ -90,6 +95,12 @@ export function DashboardPage() {
             className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
           >
             Personal
+          </Link>
+          <Link
+            to="/novedades"
+            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
+          >
+            Novedades
           </Link>
         </div>
       )}
@@ -219,6 +230,26 @@ export function DashboardPage() {
               className="mt-3 min-h-touch w-full rounded-md border border-superficie-200 bg-superficie-0 text-sm text-superficie-600"
             >
               Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Novedades sin ver: una por vez, con "Entendido" que la marca como
+          vista para siempre (no vuelve a aparecer). */}
+      {novedadesPendientes.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-superficie-900/40 p-4">
+          <div className="w-full max-w-sm rounded-card border border-institucional-600 bg-superficie-0 p-5 shadow-card">
+            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-institucional-600">
+              Novedad
+            </p>
+            <p className="mb-4 text-sm text-superficie-900">{novedadesPendientes[0].mensaje}</p>
+            <button
+              type="button"
+              onClick={() => marcarVista(novedadesPendientes[0].id)}
+              className="min-h-touch w-full rounded-md bg-institucional-600 text-sm font-semibold text-white"
+            >
+              Entendido
             </button>
           </div>
         </div>
