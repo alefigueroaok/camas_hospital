@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCamasDelHospital } from '@/hooks/useCamasDelHospital';
 import { useNovedadesPendientes } from '@/hooks/useNovedadesPendientes';
 import { CamaCardMobile } from '@/components/camas/CamaCardMobile';
 import { DashboardMatrix } from '@/components/camas/DashboardMatrix';
 import { supabase } from '@/lib/supabase';
-import { ROLES } from '@/constants/roles';
 import type { Cama, Sector } from '@/types/database.types';
 
 const TODOS = 'todos';
@@ -75,61 +73,6 @@ export function DashboardPage() {
           Hola {persona?.nombre} — rol: {rolActual}
         </p>
       </header>
-
-      {rolActual === ROLES.ADMINISTRACION && (
-        <div className="flex flex-wrap gap-3 px-6 pt-4">
-          <Link
-            to="/alta-personal"
-            className="inline-block rounded-md bg-institucional-600 px-4 py-2 text-sm font-semibold text-white"
-          >
-            Dar de alta personal
-          </Link>
-          <Link
-            to="/sectores"
-            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
-          >
-            Sectores y camas
-          </Link>
-          <Link
-            to="/personal"
-            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
-          >
-            Personal
-          </Link>
-          <Link
-            to="/novedades"
-            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
-          >
-            Novedades
-          </Link>
-        </div>
-      )}
-
-      {(rolActual === ROLES.MEDICO || rolActual === ROLES.ADMINISTRACION) && (
-        <div className="flex flex-wrap gap-3 px-6 pt-4">
-          <Link
-            to="/derivar"
-            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
-          >
-            Derivar paciente
-          </Link>
-          <Link
-            to="/solicitudes"
-            className="inline-block rounded-md border border-institucional-600 px-4 py-2 text-sm font-semibold text-institucional-600"
-          >
-            Solicitudes
-          </Link>
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-3 px-6 pt-4">
-        <Link
-          to="/historial"
-          className="inline-block rounded-md border border-superficie-300 px-4 py-2 text-sm font-medium text-superficie-600"
-        >
-          Historial de altas
-        </Link>
-      </div>
 
       {sectores.length > 0 && (
         <div className="px-6 pt-4">
