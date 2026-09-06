@@ -15,11 +15,14 @@ interface UseCamasResult {
 
 /**
  * Trae las camas de un hospital + los datos de paciente de cada ocupación
- * activa, y se re-sincroniza solo vía Realtime cuando cambia una cama
- * (INSERT/UPDATE/DELETE) — sin necesidad de recargar la página.
+ * activa, y se re-sincroniza solo vía Realtime — sin necesidad de recargar
+ * la página — ante cambios en "camas" (ocupar/liberar) o en "ocupaciones"
+ * (editar los datos del paciente sin cambiar el estado de la cama).
  *
  * IMPORTANTE: para que el Realtime funcione hace falta correr una vez en
- * Supabase: alter publication supabase_realtime add table public.camas;
+ * Supabase:
+ *   alter publication supabase_realtime add table public.camas;
+ *   alter publication supabase_realtime add table public.ocupaciones;
  */
 export function useCamasDelHospital(hospitalId?: string): UseCamasResult {
   const [camas, setCamas] = useState<Cama[]>([]);
@@ -80,14 +83,20 @@ export function useCamasDelHospital(hospitalId?: string): UseCamasResult {
     if (!hospitalId) return;
 
     // Un cambio de estado en "camas" casi siempre viene acompañado de un
-    // cambio en "ocupaciones" (se abrió o se cerró una). En vez de tratar
-    // de mergear ambas cosas a mano evento por evento, más simple y menos
-    // propenso a bugs: cualquier cambio en camas dispara un refetch de todo.
+    // cambio en "ocupaciones" (se abrió o se cerró una) — y viceversa,
+    // editar los datos de un paciente sólo toca "ocupaciones"/"pacientes"
+    // sin tocar "camas". Escuchamos ambas tablas y ante cualquier cambio
+    // refrescamos todo junto, en vez de mergear evento por evento.
     const channel = supabase
       .channel(`camas-hospital-${hospitalId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'camas', filter: `hospital_id=eq.${hospitalId}` },
+        () => cargar()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ocupaciones', filter: `hospital_id=eq.${hospitalId}` },
         () => cargar()
       )
       .subscribe();
