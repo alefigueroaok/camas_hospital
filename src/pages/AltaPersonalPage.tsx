@@ -61,7 +61,7 @@ export function AltaPersonalPage() {
   return (
     <div className="max-w-md space-y-6 p-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-superficie-900">Dar de alta personal</h1>
+        <h1 className="font-display text-2xl font-semibold text-superficie-900">➕ Dar de alta personal</h1>
         <p className="text-sm text-superficie-400">
           Se va a dar de alta en <span className="font-medium">{hospitalActual?.nombre}</span>.
         </p>
