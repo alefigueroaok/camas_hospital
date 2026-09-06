@@ -25,21 +25,21 @@ export function Layout() {
   }
 
   const itemsAdministracion: ItemMenu[] = [
-    { to: '/sectores', label: 'Sectores y camas' },
-    { to: '/personal', label: 'Personal' },
-    { to: '/alta-personal', label: 'Dar de alta personal' },
-    { to: '/novedades', label: 'Novedades' },
+    { to: '/sectores', label: '🏥 Sectores y camas' },
+    { to: '/personal', label: '👥 Personal' },
+    { to: '/alta-personal', label: '➕ Dar de alta personal' },
+    { to: '/novedades', label: '📢 Novedades' },
   ];
 
   const itemsMedicoAdmin: ItemMenu[] = [
-    { to: '/derivar', label: 'Derivar paciente' },
-    { to: '/solicitudes', label: 'Solicitudes' },
+    { to: '/derivar', label: '🩺 Derivar paciente' },
+    { to: '/solicitudes', label: '📥 Solicitudes' },
   ];
 
-  const itemsComunes: ItemMenu[] = [{ to: '/historial', label: 'Historial de altas' }];
+  const itemsComunes: ItemMenu[] = [{ to: '/historial', label: '📋 Historial de altas' }];
 
   const items: ItemMenu[] = [
-    { to: '/dashboard', label: 'Tablero de camas' },
+    { to: '/dashboard', label: '🛏️ Tablero de camas' },
     ...(rolActual === ROLES.MEDICO || rolActual === ROLES.ADMINISTRACION ? itemsMedicoAdmin : []),
     ...(rolActual === ROLES.ADMINISTRACION ? itemsAdministracion : []),
     ...itemsComunes,
