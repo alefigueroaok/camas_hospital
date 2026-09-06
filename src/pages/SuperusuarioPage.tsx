@@ -148,7 +148,7 @@ export function SuperusuarioPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-superficie-900">
-            Panel de superusuario
+            🏛️ Panel de superusuario
           </h1>
           <p className="text-sm text-superficie-400">{persona?.nombre}</p>
         </div>
