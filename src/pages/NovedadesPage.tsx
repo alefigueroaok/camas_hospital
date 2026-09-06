@@ -92,7 +92,7 @@ export function NovedadesPage() {
   return (
     <div className="max-w-2xl space-y-8 p-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-superficie-900">Novedades</h1>
+        <h1 className="font-display text-2xl font-semibold text-superficie-900">📢 Novedades</h1>
         <p className="text-sm text-superficie-400">{hospitalActual?.nombre}</p>
       </div>
 
