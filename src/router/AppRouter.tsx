@@ -9,11 +9,12 @@ import { SuperusuarioPage } from '@/pages/SuperusuarioPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { AltaPersonalPage } from '@/pages/AltaPersonalPage';
 import { GestionSectoresPage } from '@/pages/GestionSectoresPage';
+import { PersonalPage } from '@/pages/PersonalPage';
+import { NovedadesPage } from '@/pages/NovedadesPage';
 import { DerivarPacientePage } from '@/pages/DerivarPacientePage';
 import { SolicitudesPage } from '@/pages/SolicitudesPage';
 import { HistorialAltasPage } from '@/pages/HistorialAltasPage';
-import { PersonalPage } from '@/pages/PersonalPage';
-import { NovedadesPage } from '@/pages/NovedadesPage';
+import { MiCuentaPage } from '@/pages/MiCuentaPage';
 import { ROLES } from '@/constants/roles';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -38,6 +39,7 @@ export function AppRouter() {
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/historial" element={<HistorialAltasPage />} />
+              <Route path="/mi-cuenta" element={<MiCuentaPage />} />
 
               <Route element={<RoleGuard allowedRoles={[ROLES.ADMINISTRACION]} />}>
                 <Route path="/alta-personal" element={<AltaPersonalPage />} />
