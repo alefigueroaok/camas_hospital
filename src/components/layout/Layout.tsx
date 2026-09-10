@@ -36,7 +36,10 @@ export function Layout() {
     { to: '/solicitudes', label: '📥 Solicitudes' },
   ];
 
-  const itemsComunes: ItemMenu[] = [{ to: '/historial', label: '📋 Historial de altas' }];
+  const itemsComunes: ItemMenu[] = [
+    { to: '/historial', label: '📋 Historial de altas' },
+    { to: '/mi-cuenta', label: '🔐 Mi cuenta' },
+  ];
 
   const items: ItemMenu[] = [
     { to: '/dashboard', label: '🛏️ Tablero de camas' },
@@ -88,7 +91,6 @@ export function Layout() {
 
         {menuAbierto && (
           <>
-            {/* Fondo para cerrar el menú al tocar afuera */}
             <button
               type="button"
               aria-label="Cerrar menú"
