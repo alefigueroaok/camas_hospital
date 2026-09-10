@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export function LoginPage() {
   const { session, loginConDni } = useAuth();
@@ -8,6 +9,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [ingresandoConHuella, setIngresandoConHuella] = useState(false);
 
   if (session) return <Navigate to="/" replace />;
 
@@ -18,6 +20,34 @@ export function LoginPage() {
     const { error: loginError } = await loginConDni(dni, password);
     if (loginError) setError(loginError);
     setSubmitting(false);
+  }
+
+  async function handleLoginConHuella() {
+    setIngresandoConHuella(true);
+    setError(null);
+
+    try {
+      const { error: passkeyError } = await supabase.auth.signInWithPasskey();
+
+      if (passkeyError) {
+        // El navegador cancela silenciosamente si el usuario aborta el
+        // prompt del sistema operativo — no lo tratamos como un error real.
+        if (passkeyError.name !== 'AbortError') {
+          setError('No se pudo ingresar con huella: ' + passkeyError.message);
+        }
+      }
+      // Si funciona, el cambio de sesión lo toma solo el AuthContext
+      // (onAuthStateChange) y esta pantalla redirige sola.
+    } catch (e) {
+      // Algunos navegadores tiran la cancelación como excepción en vez de
+      // como error de la respuesta — la tratamos igual, en silencio.
+      const mensaje = e instanceof Error ? e.message : String(e);
+      if (!mensaje.toLowerCase().includes('abort')) {
+        setError('No se pudo ingresar con huella: ' + mensaje);
+      }
+    } finally {
+      setIngresandoConHuella(false);
+    }
   }
 
   return (
@@ -73,12 +103,17 @@ export function LoginPage() {
 
         <button
           type="button"
-          disabled
-          title="Próximamente"
-          className="min-h-touch w-full rounded-md border border-superficie-200 text-sm font-medium text-superficie-400"
+          onClick={handleLoginConHuella}
+          disabled={ingresandoConHuella}
+          className="min-h-touch w-full rounded-md border border-institucional-600 text-sm font-medium text-institucional-600 disabled:opacity-60"
         >
-          Ingresar con huella (próximamente)
+          {ingresandoConHuella ? 'Verificando…' : '🔐 Ingresar con huella / Face ID'}
         </button>
+
+        <p className="text-center text-xs text-superficie-400">
+          El botón de huella sólo funciona si ya la registraste antes desde "Mi cuenta", en este
+          mismo dispositivo.
+        </p>
       </form>
     </div>
   );
