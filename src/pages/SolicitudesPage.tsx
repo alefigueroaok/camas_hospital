@@ -57,7 +57,7 @@ export function SolicitudesPage() {
 
   return (
     <div className="max-w-2xl space-y-8 p-6">
-      <h1 className="font-display text-2xl font-semibold text-superficie-900">📥 Solicitudes de derivación</h1>
+      <h1 className="font-display text-2xl font-semibold text-superficie-900">📥 Solicitudes de camas</h1>
 
       {mensaje && (
         <p className={`text-sm ${mensajeEsError ? 'text-ocupada-700' : 'text-disponible-700'}`}>{mensaje}</p>
