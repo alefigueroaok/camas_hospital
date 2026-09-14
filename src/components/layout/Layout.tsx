@@ -32,8 +32,8 @@ export function Layout() {
   ];
 
   const itemsMedicoAdmin: ItemMenu[] = [
-    { to: '/derivar', label: '🩺 Derivar paciente' },
-    { to: '/solicitudes', label: '📥 Solicitudes' },
+    { to: '/derivar', label: '🚑 Derivar paciente' },
+    { to: '/solicitudes', label: '📥 Solicitudes de camas' },
   ];
 
   const itemsComunes: ItemMenu[] = [
